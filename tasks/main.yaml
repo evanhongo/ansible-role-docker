@@ -1,0 +1,13 @@
+- name: Configure Debian
+  include: ubuntu.yaml
+  when: ansible_distribution == 'Ubuntu' or ansible_distribution == 'Debian'
+
+- name: Configure RedHat
+  include: redhat.yaml
+  when: ansible_distribution  == "RedHat" or ansible_distribution == 'CentOS'
+
+- name: Configire Amazon Linux2
+  include: amazon.yaml
+  when: ansible_distribution == "Amazon"
+
+

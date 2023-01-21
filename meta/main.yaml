@@ -1,0 +1,20 @@
+galaxy_info:
+  role_name: docker
+  author: evanhongo
+  description: Install or update docker-engine using the repository
+  license: MIT
+  min_ansible_version: 2.2
+  platforms:
+    - name: Ubuntu
+      versions:
+        - xenial
+        - bionic
+        - focal
+  galaxy_tags:
+    - docker
+    - engine
+    - system
+    - linux
+    - daemon
+
+dependencies: []

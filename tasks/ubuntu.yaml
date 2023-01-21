@@ -1,0 +1,75 @@
+---
+
+- name: Update repositories cache and install packages to allow apt to use a repository over HTTPS
+  package:
+    update_cache: yes
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+  become: true
+
+- name: Make sure directory /etc/apt/keyrings exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+  become: true
+
+- name: Add Docker’s official GPG key
+  shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
+  become: true
+
+- name: Set up the repository
+  shell: echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  become: true
+
+- name: Get desired version
+  shell: apt-cache madison docker-ce | awk '{ print $3; }' | grep {{ docker_engine_version }}
+  register: docker_engine_available_version_result
+  failed_when: false
+  changed_when: false
+
+- name: Check multiple match
+  debug:
+    msg:
+      - "match multiple versions: {{ docker_engine_available_version_result.stdout_lines | join(', ') }}"
+  when: docker_engine_available_version_result.stdout_lines | length > 1
+  failed_when: true
+
+- name: Check no match
+  debug: msg="no match for {{ docker_engine_version }}"
+  when: docker_engine_available_version_result.stdout_lines | length == 0
+  failed_when: docker_engine_fail_on_no_match | default(false, true)
+
+- name: Store found version
+  set_fact:
+    found_version: "{{ docker_engine_available_version_result.stdout }}"
+
+- name: Check installed docker version
+  shell: 'dpkg -l docker-ce | grep {{ found_version }}'
+  register: docker_engine_version_installed_result
+  changed_when: false
+  failed_when: false
+
+- name: Store result that indicates whether specified version has been installed
+  set_fact:
+    has_been_installed: "{{ docker_engine_version_installed_result.rc == 0 }}"
+
+
+- block:  
+  - name: Docker-engine {{ found_version }} present
+    package:
+      update_cache: yes
+      name:
+        - "docker-ce={{ found_version }}"
+        - "docker-ce-cli={{ found_version }}"
+        - containerd.io
+      state: present    
+    notify: docker_restart
+    become: true
+  when: not has_been_installed
+
+
+
